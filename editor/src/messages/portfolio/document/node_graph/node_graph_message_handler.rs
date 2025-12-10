@@ -1,19 +1,19 @@
 use super::node_properties;
-use super::utility_types::{BoxSelection, ContextMenuInformation, DragStart, FrontendNode};
+use super::utility_types::{ContextMenuInformation, DragStart, FrontendNode, NodeGraphSelectionBox};
 use crate::consts::GRID_SIZE;
 use crate::messages::input_mapper::utility_types::macros::{action_shortcut, action_shortcut_manual};
 use crate::messages::layout::utility_types::widget_prelude::*;
 use crate::messages::portfolio::document::document_message_handler::navigation_controls;
 use crate::messages::portfolio::document::graph_operation::utility_types::ModifyInputsContext;
 use crate::messages::portfolio::document::node_graph::document_node_definitions::{DefinitionIdentifier, NodePropertiesContext, resolve_document_node_type};
-use crate::messages::portfolio::document::node_graph::utility_types::{ContextMenuData, Direction, FrontendGraphDataType, NodeGraphErrorDiagnostic};
+use crate::messages::portfolio::document::node_graph::utility_types::{ContextMenuData, Direction, FrontendGraphDataType, NodeGraphErrorDiagnostic, WirePathInProgress};
 use crate::messages::portfolio::document::utility_types::document_metadata::LayerNodeIdentifier;
 use crate::messages::portfolio::document::utility_types::misc::GroupFolderType;
 use crate::messages::portfolio::document::utility_types::network_interface::{
 	self, FlowType, InputConnector, NodeNetworkInterface, NodeTemplate, NodeTypePersistentMetadata, OutputConnector, Previewing,
 };
 use crate::messages::portfolio::document::utility_types::nodes::{CollapsedLayers, LayerPanelEntry};
-use crate::messages::portfolio::document::utility_types::wires::{GraphWireStyle, WirePath, WirePathUpdate, build_vector_wire};
+use crate::messages::portfolio::document::utility_types::wires::{GraphWireStyle, WirePathUpdate, build_vector_wire};
 use crate::messages::prelude::*;
 use crate::messages::tool::common_functionality::auto_panning::AutoPanning;
 use crate::messages::tool::common_functionality::graph_modification_utils::get_clip_mode;
@@ -328,7 +328,7 @@ impl<'a> MessageHandler<NodeGraphMessage, NodeGraphMessageContext<'a>> for NodeG
 					self.wire_in_progress_to_connector = None;
 					self.wire_in_progress_type = FrontendGraphDataType::General;
 				}
-				responses.add(FrontendMessage::UpdateWirePathInProgress { wire_path: None });
+				responses.add(FrontendMessage::UpdateWirePathInProgress { wire_path_in_progress: None });
 				responses.add(FrontendMessage::UpdateContextMenuInformation {
 					context_menu_information: self.context_menu.clone(),
 				});
@@ -791,7 +791,7 @@ impl<'a> MessageHandler<NodeGraphMessage, NodeGraphMessageContext<'a>> for NodeG
 						responses.add(NodeGraphMessage::SelectedNodesSet {
 							nodes: self.selection_before_pointer_down.clone(),
 						});
-						responses.add(FrontendMessage::UpdateBox { box_selection: None });
+						responses.add(FrontendMessage::UpdateNodeGraphSelectionBox { selection_box: None });
 						return;
 					}
 					// Abort dragging a wire
@@ -801,7 +801,8 @@ impl<'a> MessageHandler<NodeGraphMessage, NodeGraphMessageContext<'a>> for NodeG
 						self.wire_in_progress_type = FrontendGraphDataType::General;
 
 						responses.add(DocumentMessage::AbortTransaction);
-						responses.add(FrontendMessage::UpdateWirePathInProgress { wire_path: None });
+						responses.add(FrontendMessage::UpdateWirePathInProgress { wire_path_in_progress: None });
+
 						return;
 					}
 
@@ -886,7 +887,7 @@ impl<'a> MessageHandler<NodeGraphMessage, NodeGraphMessageContext<'a>> for NodeG
 					responses.add(FrontendMessage::UpdateContextMenuInformation {
 						context_menu_information: self.context_menu.clone(),
 					});
-					responses.add(FrontendMessage::UpdateWirePathInProgress { wire_path: None });
+					responses.add(FrontendMessage::UpdateWirePathInProgress { wire_path_in_progress: None });
 				}
 
 				// Toggle visibility of clicked node and return
@@ -1095,14 +1096,14 @@ impl<'a> MessageHandler<NodeGraphMessage, NodeGraphMessageContext<'a>> for NodeG
 							to_connector_is_layer,
 							GraphWireStyle::Direct,
 						);
-						let path_string = vector_wire.to_svg();
-						let wire_path = WirePath {
-							path_string,
+						let wire_path = WirePathInProgress {
+							wire: vector_wire.to_svg(),
 							data_type: self.wire_in_progress_type,
 							thick: false,
-							dashed: false,
 						};
-						responses.add(FrontendMessage::UpdateWirePathInProgress { wire_path: Some(wire_path) });
+						responses.add(FrontendMessage::UpdateWirePathInProgress {
+							wire_path_in_progress: Some(wire_path),
+						});
 					}
 				} else if let Some((drag_start, dragged)) = &mut self.drag_start {
 					if drag_start.start_x != point.x || drag_start.start_y != point.y {
@@ -1432,8 +1433,8 @@ impl<'a> MessageHandler<NodeGraphMessage, NodeGraphMessageContext<'a>> for NodeG
 				self.reordering_import = None;
 
 				responses.add(DocumentMessage::EndTransaction);
-				responses.add(FrontendMessage::UpdateWirePathInProgress { wire_path: None });
-				responses.add(FrontendMessage::UpdateBox { box_selection: None });
+				responses.add(FrontendMessage::UpdateWirePathInProgress { wire_path_in_progress: None });
+				responses.add(FrontendMessage::UpdateNodeGraphSelectionBox { selection_box: None });
 				responses.add(FrontendMessage::UpdateImportReorderIndex { index: None });
 				responses.add(FrontendMessage::UpdateExportReorderIndex { index: None });
 				self.update_node_graph_hints(responses);
@@ -1927,15 +1928,6 @@ impl<'a> MessageHandler<NodeGraphMessage, NodeGraphMessageContext<'a>> for NodeG
 			}
 			NodeGraphMessage::UpdateBoxSelection => {
 				if let Some((box_selection_start, _)) = self.box_selection_start {
-					// The mouse button was released but we missed the pointer up event
-					// if ((e.buttons & 1) === 0) {
-					// 	completeBoxSelection();
-					// 	boxSelection = undefined;
-					// } else if ((e.buttons & 2) !== 0) {
-					// 	editor.handle.selectNodes(new BigUint64Array(previousSelection));
-					// 	boxSelection = undefined;
-					// }
-
 					let Some(network_metadata) = network_interface.network_metadata(selection_network_path) else {
 						log::error!("Could not get network metadata in UpdateBoxSelection");
 						return;
@@ -1943,7 +1935,7 @@ impl<'a> MessageHandler<NodeGraphMessage, NodeGraphMessageContext<'a>> for NodeG
 
 					let box_selection_start_viewport = network_metadata.persistent_metadata.navigation_metadata.node_graph_to_viewport.transform_point2(box_selection_start);
 
-					let box_selection = Some(BoxSelection {
+					let selection_box = Some(NodeGraphSelectionBox {
 						start_x: box_selection_start_viewport.x.max(0.) as u32,
 						start_y: box_selection_start_viewport.y.max(0.) as u32,
 						end_x: ipp.mouse.position.x.max(0.) as u32,
@@ -1988,7 +1980,7 @@ impl<'a> MessageHandler<NodeGraphMessage, NodeGraphMessageContext<'a>> for NodeG
 							nodes: nodes.into_iter().collect::<Vec<_>>(),
 						});
 					}
-					responses.add(FrontendMessage::UpdateBox { box_selection })
+					responses.add(FrontendMessage::UpdateNodeGraphSelectionBox { selection_box })
 				}
 			}
 			NodeGraphMessage::UpdateImportsExports => {
