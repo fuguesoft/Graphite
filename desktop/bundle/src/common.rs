@@ -18,8 +18,12 @@ fn profile_name() -> &'static str {
 	profile
 }
 
+pub(super) fn target_path() -> PathBuf {
+	workspace_path().join("target")
+}
+
 pub(crate) fn profile_path() -> PathBuf {
-	workspace_path().join(format!("target/{}", env!("CARGO_PROFILE")))
+	target_path().join(profile_name())
 }
 
 pub(crate) fn cef_path() -> PathBuf {

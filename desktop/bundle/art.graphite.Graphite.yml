@@ -1,0 +1,59 @@
+app-id: art.graphite.Graphite
+runtime: org.freedesktop.Platform
+runtime-version: "25.08"
+runtime-extensions:
+  - org.freedesktop.Platform.VulkanLayer
+sdk: org.freedesktop.Sdk
+# sdk-extensions:
+#   - org.freedesktop.Sdk.Extension.rust-stable
+#   - org.freedesktop.Sdk.Extension.node22
+# build-options:
+#   append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/node22/bin:/app/lib/sdk/wasm-pack/bin
+
+command: graphite
+
+finish-args:
+  - --device=dri
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=network
+
+modules:
+  - name: app
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app
+      - cp -r ./* /app/
+      - chmod +x /app/bin/*
+    sources:
+      - type: dir
+        path: ../../target/graphite-flatpak-src
+
+    # patchelf --set-rpath '$ORIGIN/../lib:$ORIGIN/../lib/cef' --set-interpreter '/lib64/ld-linux-x86-64.so.2' ./target/graphite-flatpak-src/bin/graphite
+
+    # - name: wasm-pack
+    #   buildsystem: simple
+    #   build-commands:
+    #     - install -d /app/lib/sdk/wasm-pack/bin
+    #     - install -Dm755 wasm-pack /app/lib/sdk/wasm-pack/bin/wasm-pack
+    #   sources:
+    #     - type: archive
+    #       url: https://github.com/drager/wasm-pack/releases/download/v0.13.1/wasm-pack-v0.13.1-x86_64-unknown-linux-musl.tar.gz
+    #       sha256: c539d91ccab2591a7e975bcf82c82e1911b03335c80aa83d67ad25ed2ad06539
+    #       strip-components: 1
+
+    # - name: graphite
+    #   buildsystem: simple
+    #   build-options:
+    #     build-args:
+    #       - --share=network
+    #   build-commands:
+    #     - npm run build-desktop
+
+    #   sources:
+    #     - type: git
+    #       url: https://github.com/GraphiteEditor/Graphite.git
+    #       branch: master
+    #       # Flatpak best practice is to pin to a commit for reproducible builds.
+    #       # commit: "PUT_COMMIT_SHA_HERE"

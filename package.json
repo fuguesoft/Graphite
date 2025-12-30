@@ -12,6 +12,7 @@
 		"build-profiling": "cd frontend && npm run build-profiling",
 		"build": "cd frontend && npm run build",
 		"build-desktop": "cd frontend && npm run build-native && cargo run -r -p graphite-desktop-bundle",
+		"build-desktop-wasm": "cd frontend && npm run build-native",
 		"build-desktop-dev": "cd frontend && npm run build-native-dev && cargo run -p graphite-desktop-bundle",
 		"---------- UTILITIES ----------": "",
 		"lint": "cd frontend && npm run lint",
