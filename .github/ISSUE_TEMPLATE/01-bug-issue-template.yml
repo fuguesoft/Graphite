@@ -1,0 +1,132 @@
+name: Bug
+description: File a bug/issue
+labels: ["Bug"]
+title: "[BUG] <title>"
+body:
+  - type: markdown
+    attributes:
+      value: "## Thank you for reporting an issue!"
+  - type: checkboxes
+    attributes:
+      label: Does an issue for this already exist?
+      description: Please search to see if an issue already exists for the bug you encountered.
+      options:
+        - label: I have searched the existing issues.
+        - label: I have ensured my environment (operating system, app launcher, etc) is up to date.
+          required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating System and Version
+      description: What is your Operating System? What version?
+      placeholder: Debian, Void, Gentoo, Windows, macOS etc.
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: App Installation
+      description: How is the app installed? (N/A for web builds)
+      multiple: false
+      options:
+        - AppImage
+        - DMG (macOS)
+        - EXE (Windows)
+        - Flatpak
+        - Nixpkg
+        - PKG
+        - Snap
+        - Source Compilation
+        - Steam
+        - Other
+        - N/A
+      default: 0
+    validations:
+      required: true
+  - type: input
+    id: web
+    attributes:
+      label: Webapp
+      description: Which web deployment are you using? (N/A for Desktop users)
+      placeholder: dev.graphite.art, editor.graphite.art
+    validations:
+      required: true
+  - type: input
+    id: other-install
+    attributes:
+      label: Other Install
+      description: Please tell us how the app was installed.
+  - type: input
+    attributes:
+      label: Build Version
+      description: What version of Graphite?
+      placeholder: 1.x, 2.x
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      description: Which browswer are you using? What version?
+      placeholder: Firefox, Google Chrome, Safari, Librewolf, etc.
+  - type: input
+    id: de-wm
+    attributes:
+      label: Desktop Environment
+      description: What is your Desktop Environment/Window Manager? (N/A for macOS/Windows)
+      placeholder: GNOME, KDE, SwayWM, niri, etc.
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Please describe the issue as cleary as you can.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Please list each step taken to reproduce the bug.
+      placeholder: |
+        1. First I install...
+        2. Then I run...
+        3. Next I click...
+        ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: Please describe what you expect to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Paste or attach any relevant screenshots or videos here.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Paste or attach any relevant logs or errors here.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Config
+      description: Paste or attach any relevant config files here.
+  - type: checkboxes
+    id: self-service
+    attributes:
+      label: Self-service
+      description: "Would you be willing to fix this issue yourself?"
+      options:
+        - label: I'd be willing to fix this issue myself.
